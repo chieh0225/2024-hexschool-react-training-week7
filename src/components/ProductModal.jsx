@@ -1,0 +1,456 @@
+// 新增/編輯產品 Modal
+import axios from "axios";
+import Toast from "../components/Toast";
+import { Modal } from "bootstrap";
+
+import { useRef, useEffect, useState } from "react";
+import { useDispatch } from "react-redux";
+import { pushMessage } from "../redux/toastSlice";
+
+const BASE_URL = import.meta.env.VITE_BASE_URL;
+const API_PATH = import.meta.env.VITE_API_PATH;
+
+function ProductModal({
+  modalMode,
+  tempProduct,
+  getProducts,
+  isOpen,
+  setIsOpen,
+}) {
+  const [modalData, setModalData] = useState(tempProduct);
+
+  useEffect(() => {
+    setModalData({
+      ...tempProduct,
+    });
+  }, [tempProduct]);
+
+  const productModalRef = useRef(null);
+
+  useEffect(() => {
+    // console.log(productModalRef.current);
+
+    // 透過 new Modal(ref) 建立 Modal 實例
+    new Modal(productModalRef.current, {
+      // backdrop: "static", // 顯示背景遮罩，但使用者無法透過點擊背景來關閉 Modal，且點擊背景時會使其觸發內建抖動動畫
+      backdrop: false, // 不插入背景遮罩，允許直接操作 Modal 後方的內容
+    });
+
+    productModalRef.current.addEventListener("hide.bs.modal", () => {
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      const modalInstance = Modal.getInstance(productModalRef.current);
+      modalInstance.show();
+    }
+  }, [isOpen]);
+
+  const dispatch = useDispatch();
+
+  const handleCloseModal = () => {
+    const modalInstance = Modal.getInstance(productModalRef.current);
+    modalInstance.hide();
+    setIsOpen(false);
+  };
+
+  const handleModalInputChange = (e) => {
+    const { value, name, checked, type } = e.target;
+
+    setModalData({
+      ...modalData,
+      [name]: type === "checkbox" ? checked : value,
+    });
+  };
+
+  const handleImageChange = (e, index) => {
+    const { value } = e.target;
+
+    const newImages = [...modalData.imagesUrl];
+    newImages[index] = value;
+    setModalData({
+      ...modalData,
+      imagesUrl: newImages,
+    });
+  };
+
+  const handleAddImage = () => {
+    const newImages = [...modalData.imagesUrl, ""];
+
+    setModalData({
+      ...modalData,
+      imagesUrl: newImages,
+    });
+  };
+
+  const handleRemoveImage = () => {
+    const newImages = [...modalData.imagesUrl];
+
+    newImages.pop();
+
+    setModalData({
+      ...modalData,
+      imagesUrl: newImages,
+    });
+  };
+
+  const createProduct = () => {
+    const data = {
+      data: {
+        ...modalData,
+        origin_price: Number(modalData.origin_price),
+        price: Number(modalData.price),
+        is_enabled: modalData.is_enabled ? 1 : 0,
+      },
+    };
+    console.log(data);
+    return axios
+      .post(`${BASE_URL}/v2/api/${API_PATH}/admin/product`, data)
+      .then((res) => {
+        console.log(res);
+      })
+      .catch((err) => {
+        // console.log(err);
+
+        const { message } = err.response.data;
+
+        dispatch(
+          pushMessage({
+            text: message.join("、"),
+            status: "failed",
+          })
+        );
+      });
+  };
+
+  const updateProduct = () => {
+    const data = {
+      data: {
+        ...modalData,
+        origin_price: Number(modalData.origin_price),
+        price: Number(modalData.price),
+        is_enabled: modalData.is_enabled ? 1 : 0,
+      },
+    };
+    console.log(data);
+    return axios
+      .put(`${BASE_URL}/v2/api/${API_PATH}/admin/product/${modalData.id}`, data)
+      .then((res) => {
+        console.log(res);
+      })
+      .catch((err) => {
+        dispatch(
+          pushMessage({
+            text: "編輯產品失敗",
+            status: "failed",
+          })
+        );
+        console.log(err.res);
+      });
+  };
+
+  const handleUpdateProduct = () => {
+    let apiCall;
+    let successMessage;
+
+    if (modalMode === "create") {
+      apiCall = createProduct;
+      successMessage = "新增產品成功";
+    } else {
+      apiCall = updateProduct;
+      successMessage = "編輯產品成功";
+    }
+
+    apiCall()
+      .then(() => {
+        getProducts();
+        handleCloseModal();
+        dispatch(
+          pushMessage({
+            text: successMessage,
+            status: "success",
+          })
+        );
+      })
+      .catch((error) => {
+        dispatch(
+          pushMessage({
+            text: "更新產品失敗",
+            status: "failed",
+          })
+        );
+      });
+  };
+
+  // 圖片上傳：待完成
+  const handleFileChange = (e) => {
+    console.log(e.target);
+
+    const file = e.target.files[0];
+  };
+
+  return (
+    <div
+      ref={productModalRef}
+      id="productModal"
+      className="modal"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+    >
+      <div className="modal-dialog modal-dialog-centered modal-xl">
+        <div className="modal-content border-0 shadow">
+          <div className="modal-header border-bottom">
+            <h5 className="modal-title fs-4">
+              {modalMode === "create" ? "新增產品" : "編輯產品"}
+            </h5>
+            <button
+              type="button"
+              className="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+              onClick={handleCloseModal}
+            ></button>
+          </div>
+
+          <div className="modal-body p-4">
+            <div className="row g-4">
+              <div className="col-md-4">
+                <div className="mb-5">
+                  <label htmlFor="fileInput" className="form-label">
+                    {" "}
+                    圖片上傳{" "}
+                  </label>
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png"
+                    className="form-control"
+                    id="fileInput"
+                    onChange={handleFileChange}
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label htmlFor="primary-image" className="form-label">
+                    主圖
+                  </label>
+                  <div className="input-group">
+                    <input
+                      name="imageUrl"
+                      type="text"
+                      id="primary-image"
+                      className="form-control"
+                      placeholder="請輸入圖片連結"
+                      value={modalData.imageUrl}
+                      onChange={handleModalInputChange}
+                    />
+                  </div>
+                  <img
+                    src={modalData.imageUrl}
+                    alt={modalData.title}
+                    className="img-fluid"
+                  />
+                </div>
+
+                {/* 副圖 */}
+                <div className="border border-2 border-dashed rounded-3 p-3">
+                  {modalData.imagesUrl?.map((image, index) => (
+                    <div key={index} className="mb-2">
+                      <label
+                        htmlFor={`imagesUrl-${index + 1}`}
+                        className="form-label"
+                      >
+                        副圖 {index + 1}
+                      </label>
+                      <input
+                        id={`imagesUrl-${index + 1}`}
+                        type="text"
+                        placeholder={`圖片網址 ${index + 1}`}
+                        className="form-control mb-2"
+                        value={image}
+                        onChange={(e) => handleImageChange(e, index)}
+                      />
+                      {image && (
+                        <img
+                          src={image}
+                          alt={`副圖 ${index + 1}`}
+                          className="img-fluid mb-2"
+                        />
+                      )}
+                    </div>
+                  ))}
+                  <div className="btn-group w-100">
+                    {modalData.imagesUrl.length < 5 &&
+                      modalData.imagesUrl[modalData.imagesUrl.length - 1] !==
+                        "" && (
+                        <button
+                          onClick={handleAddImage}
+                          className="btn btn-outline-primary btn-sm w-100"
+                        >
+                          新增圖片
+                        </button>
+                      )}
+
+                    {modalData.imagesUrl.length > 1 && (
+                      <button
+                        onClick={handleRemoveImage}
+                        className="btn btn-outline-danger btn-sm w-100"
+                      >
+                        取消圖片
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-md-8">
+                <div className="mb-3">
+                  <label htmlFor="title" className="form-label">
+                    標題
+                  </label>
+                  <input
+                    name="title"
+                    id="title"
+                    type="text"
+                    className="form-control"
+                    placeholder="請輸入標題"
+                    value={modalData.title}
+                    onChange={handleModalInputChange}
+                  />
+                </div>
+
+                <div className="mb-3">
+                  <label htmlFor="category" className="form-label">
+                    分類
+                  </label>
+                  <input
+                    name="category"
+                    id="category"
+                    type="text"
+                    className="form-control"
+                    placeholder="請輸入分類"
+                    value={modalData.category}
+                    onChange={handleModalInputChange}
+                  />
+                </div>
+
+                <div className="mb-3">
+                  <label htmlFor="unit" className="form-label">
+                    單位
+                  </label>
+                  <input
+                    name="unit"
+                    id="unit"
+                    type="text"
+                    className="form-control"
+                    placeholder="請輸入單位"
+                    value={modalData.unit}
+                    onChange={handleModalInputChange}
+                  />
+                </div>
+
+                <div className="row g-3 mb-3">
+                  <div className="col-6">
+                    <label htmlFor="origin_price" className="form-label">
+                      原價
+                    </label>
+                    <input
+                      name="origin_price"
+                      id="origin_price"
+                      type="number"
+                      className="form-control"
+                      placeholder="請輸入原價"
+                      min="0"
+                      value={modalData.origin_price}
+                      onChange={handleModalInputChange}
+                    />
+                  </div>
+                  <div className="col-6">
+                    <label htmlFor="price" className="form-label">
+                      售價
+                    </label>
+                    <input
+                      name="price"
+                      id="price"
+                      type="number"
+                      className="form-control"
+                      placeholder="請輸入售價"
+                      min="0"
+                      value={modalData.price}
+                      onChange={handleModalInputChange}
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                  <label htmlFor="description" className="form-label">
+                    產品描述
+                  </label>
+                  <textarea
+                    name="description"
+                    id="description"
+                    className="form-control"
+                    rows={4}
+                    placeholder="請輸入產品描述"
+                    value={modalData.description}
+                    onChange={handleModalInputChange}
+                  ></textarea>
+                </div>
+
+                <div className="mb-3">
+                  <label htmlFor="content" className="form-label">
+                    說明內容
+                  </label>
+                  <textarea
+                    name="content"
+                    id="content"
+                    className="form-control"
+                    rows={4}
+                    placeholder="請輸入說明內容"
+                    value={modalData.content}
+                    onChange={handleModalInputChange}
+                  ></textarea>
+                </div>
+
+                <div className="form-check">
+                  <input
+                    name="is_enabled"
+                    type="checkbox"
+                    className="form-check-input"
+                    id="isEnabled"
+                    checked={modalData.is_enabled}
+                    onChange={handleModalInputChange}
+                  />
+                  <label className="form-check-label" htmlFor="isEnabled">
+                    是否啟用
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="modal-footer border-top bg-light">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleCloseModal}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleUpdateProduct}
+            >
+              確認
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default ProductModal;
