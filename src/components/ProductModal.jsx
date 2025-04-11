@@ -20,10 +20,11 @@ function ProductModal({
   const [modalData, setModalData] = useState(tempProduct);
 
   useEffect(() => {
-    setModalData({
-      ...tempProduct,
-    });
-  }, [tempProduct]);
+    // 當 Modal 開啟時，重置 modalData 數據
+    if (isOpen) {
+      setModalData({ ...tempProduct });
+    }
+  }, [isOpen, tempProduct]); // 監聽 isOpen 和 tempProduct 的變化
 
   const productModalRef = useRef(null);
 
@@ -107,15 +108,17 @@ function ProductModal({
         is_enabled: modalData.is_enabled ? 1 : 0,
       },
     };
-    console.log(data);
     return axios
       .post(`${BASE_URL}/v2/api/${API_PATH}/admin/product`, data)
-      .then((res) => {
-        console.log(res);
+      .then(() => {
+        dispatch(
+          pushMessage({
+            text: "新增產品成功",
+            status: "success",
+          })
+        );
       })
       .catch((err) => {
-        // console.log(err);
-
         const { message } = err.response.data;
 
         dispatch(
@@ -136,53 +139,42 @@ function ProductModal({
         is_enabled: modalData.is_enabled ? 1 : 0,
       },
     };
-    console.log(data);
     return axios
       .put(`${BASE_URL}/v2/api/${API_PATH}/admin/product/${modalData.id}`, data)
-      .then((res) => {
-        console.log(res);
+      .then(() => {
+        dispatch(
+          pushMessage({
+            text: "編輯產品成功",
+            status: "success",
+          })
+        );
       })
-      .catch((err) => {
+      .catch(() => {
         dispatch(
           pushMessage({
             text: "編輯產品失敗",
             status: "failed",
           })
         );
-        console.log(err.res);
       });
   };
 
   const handleUpdateProduct = () => {
     let apiCall;
-    let successMessage;
 
     if (modalMode === "create") {
       apiCall = createProduct;
-      successMessage = "新增產品成功";
     } else {
       apiCall = updateProduct;
-      successMessage = "編輯產品成功";
     }
 
     apiCall()
       .then(() => {
         getProducts();
         handleCloseModal();
-        dispatch(
-          pushMessage({
-            text: successMessage,
-            status: "success",
-          })
-        );
       })
       .catch((error) => {
-        dispatch(
-          pushMessage({
-            text: "更新產品失敗",
-            status: "failed",
-          })
-        );
+        console.log(error);
       });
   };
 
@@ -239,7 +231,7 @@ function ProductModal({
                   <div className="input-group">
                     <input
                       name="imageUrl"
-                      type="text"
+                      type="url"
                       id="primary-image"
                       className="form-control"
                       placeholder="請輸入圖片連結"

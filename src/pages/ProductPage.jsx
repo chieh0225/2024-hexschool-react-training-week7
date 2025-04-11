@@ -5,7 +5,7 @@ import ProductModal from "../components/ProductModal";
 import DelProductModal from "../components/DelProductModal";
 import Toast from "../components/Toast";
 
-import { useRef, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const API_PATH = import.meta.env.VITE_API_PATH;
@@ -29,6 +29,7 @@ function ProductPage({ setIsAuth }) {
   const [modalMode, setModalMode] = useState(null);
 
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isDelProductModalOpen, setIsDelProductModalOpen] = useState(false);
 
   const getProducts = (page = 1) => {
     axios
@@ -37,7 +38,7 @@ function ProductPage({ setIsAuth }) {
         setProductList(res.data.products);
         setPageInfo(res.data.pagination);
       })
-      .catch((err) => {
+      .catch(() => {
         alert("取得產品失敗");
       });
   };
@@ -58,12 +59,10 @@ function ProductPage({ setIsAuth }) {
     setIsProductModalOpen(true);
   };
 
-  const delProductModalRef = useRef(null);
-
   const handleOpenDelModal = (product) => {
     setTempProduct(product);
-    const modalInstance = Modal.getInstance(delProductModalRef.current);
-    modalInstance.show();
+
+    setIsDelProductModalOpen(true);
   };
 
   const [tempProduct, setTempProduct] = useState(defaultModalState);
@@ -79,11 +78,11 @@ function ProductPage({ setIsAuth }) {
   const handleLogout = async () => {
     axios
       .post(`${BASE_URL}/v2/logout`)
-      .then((res) => {
+      .then(() => {
         alert("成功登出");
         setIsAuth(false);
       })
-      .catch((err) => {
+      .catch(() => {
         alert("登出失敗");
       });
   };
@@ -176,7 +175,8 @@ function ProductPage({ setIsAuth }) {
       <DelProductModal
         tempProduct={tempProduct}
         getProducts={getProducts}
-        delProductModalRef={delProductModalRef}
+        isOpen={isDelProductModalOpen}
+        setIsOpen={setIsDelProductModalOpen}
       />
 
       <Toast />

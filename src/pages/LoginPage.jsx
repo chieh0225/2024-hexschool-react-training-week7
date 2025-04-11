@@ -1,105 +1,109 @@
 import axios from "axios";
 
-import { useState } from "react";
+import { useForm } from "react-hook-form";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 
-function LoginPage({ getProducts, setIsAuth }) {
-  const [account, setAccount] = useState({
-    username: "example@test.com",
-    password: "example",
-  });
+function LoginPage({ setIsAuth }) {
+  const { handleSubmit } = useForm();
 
-  const handleInputChange = (e) => {
-    // console.log(e.target.value);
-    // console.log(e.target.name); // 可以用於辨別目前是哪一個 input 正在輸入內容
+  const onSubmit = () => {
+    const account = {
+      username: watch("username"),
+      password: watch("password"),
+    };
 
-    const { value, name } = e.target;
-
-    setAccount({
-      ...account,
-      [name]: value,
-    });
-  };
-
-  const handleLogin = (e) => {
-    e.preventDefault(); // 取消 form 表單的預設行為
-    // console.log(account);
-    // console.log(import.meta.env.VITE_BASE_URL);
-    // console.log(import.meta.env.VITE_API_PATH);
     axios
       .post(`${BASE_URL}/v2/admin/signin`, account)
       .then((res) => {
-        // console.log(res);
         const { token, expired } = res.data;
-        // console.log(token, expired);
         document.cookie = `hexToken=${token}; expires=${new Date(expired)}`;
-
         axios.defaults.headers.common["Authorization"] = token;
-
         setIsAuth(true);
       })
-      .catch((err) => {
-        console.error(err);
+      .catch((error) => {
         alert("登入失敗");
+        console.log(error);
       });
   };
 
-  // const checkUserLogin = () => {
-  //   axios
-  //     .post(`${BASE_URL}/v2/api/user/check`)
-  //     .then((res) => {
-  //       getProducts();
-  //       setIsAuth(true);
-  //     })
-  //     .catch((err) => {
-  //       console.error(err);
-  //     });
-  // };
-
-  // useEffect(() => {
-  //   const token = document.cookie.replace(
-  //     /(?:(?:^|.*;\s*)hexToken\s*\=\s*([^;]*).*$)|^.*$/,
-  //     "$1"
-  //   );
-
-  //   axios.defaults.headers.common["Authorization"] = token;
-
-  //   checkUserLogin();
-  // }, []);
+  const {
+    watch,
+    register,
+    formState: { errors, touchedFields },
+  } = useForm({
+    mode: "onBlur",
+  });
 
   return (
     <div className="container login">
       <div className="row justify-content-center">
-        <h1 className="h3 mb-3">請先登入</h1>
+        <h1 className="h3 mb-3 text-center">請先登入</h1>
         <div className="col-8">
-          <form className="form-signin" onSubmit={handleLogin}>
-            <div className="form-floating mb-3">
+          <form className="form-signin" onSubmit={handleSubmit(onSubmit)}>
+            <div className="mb-3">
+              <label htmlFor="username" className="form-label">
+                信箱
+              </label>
               <input
                 type="email"
-                className="form-control"
+                className={`form-control ${
+                  touchedFields.username
+                    ? errors.username
+                      ? "is-invalid"
+                      : "is-valid"
+                    : ""
+                }`}
                 id="username"
                 placeholder="name@example.com"
                 name="username"
-                value={account.username}
-                onChange={handleInputChange}
-                required
-                autoFocus
+                {...register("username", {
+                  required: "信箱欄位必填",
+                  pattern: {
+                    value: /^\S+@\S+$/i,
+                    message: "信箱格式錯誤",
+                  },
+                })}
               />
-              <label htmlFor="username">信箱</label>
+              <div
+                className="col-auto invalid-feedback"
+                style={{
+                  minHeight: "1.5em",
+                  visibility: errors.username ? "visible" : "hidden",
+                }}
+              >
+                {errors.username?.message || <span>&nbsp;</span>}
+              </div>
             </div>
-            <div className="form-floating mb-3">
+            <div className="mb-3">
+              <label htmlFor="password" className="form-label">
+                密碼
+              </label>
               <input
                 type="password"
-                className="form-control"
+                className={`form-control ${
+                  touchedFields.password
+                    ? errors.password
+                      ? "is-invalid"
+                      : "is-valid"
+                    : ""
+                }`}
                 id="password"
                 placeholder="Password"
                 name="password"
-                value={account.password}
-                onChange={handleInputChange}
-                required
+                {...register("password", {
+                  required: "密碼欄位必填",
+                })}
               />
-              <label htmlFor="password">密碼</label>
+              <div
+                className="col-auto invalid-feedback"
+                style={{
+                  minHeight: "1.5em",
+                  visibility: errors.password ? "visible" : "hidden",
+                }}
+              >
+                {errors.password?.message || <span>&nbsp;</span>}
+              </div>
             </div>
             <button className="btn btn-primary">登入</button>
           </form>

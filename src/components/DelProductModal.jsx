@@ -3,12 +3,18 @@ import axios from "axios";
 import Toast from "../components/Toast";
 import { Modal } from "bootstrap";
 
-import { useEffect } from "react";
+import { useRef, useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { pushMessage } from "../redux/toastSlice";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
 const API_PATH = import.meta.env.VITE_API_PATH;
 
-function DelProductModal({ tempProduct, getProducts, delProductModalRef }) {
+function DelProductModal({ isOpen, setIsOpen, tempProduct, getProducts }) {
+  const dispatch = useDispatch();
+
+  const delProductModalRef = useRef(null);
+
   useEffect(() => {
     new Modal(delProductModalRef.current, {
       backdrop: false,
@@ -21,19 +27,26 @@ function DelProductModal({ tempProduct, getProducts, delProductModalRef }) {
     });
   }, []);
 
+  useEffect(() => {
+    if (isOpen) {
+      const modalInstance = Modal.getInstance(delProductModalRef.current);
+      modalInstance.show();
+    }
+  }, [isOpen]);
+
   const handleCloseDelModal = () => {
     const modalInstance = Modal.getInstance(delProductModalRef.current);
     modalInstance.hide();
+
+    setIsOpen(false);
   };
 
   const deleteProduct = () => {
     return axios
       .delete(`${BASE_URL}/v2/api/${API_PATH}/admin/product/${tempProduct.id}`)
-      .then((res) => {
-        console.log(res);
-      })
-      .catch((err) => {
-        console.log(err.res);
+      .then(() => {})
+      .catch((error) => {
+        console.log(error);
       });
   };
 
@@ -41,14 +54,21 @@ function DelProductModal({ tempProduct, getProducts, delProductModalRef }) {
     deleteProduct()
       .then(() => {
         getProducts();
-        Toast.fire({
-          icon: "success",
-          title: "刪除產品成功",
-        });
+        dispatch(
+          pushMessage({
+            text: "刪除產品成功",
+            status: "success",
+          })
+        );
         handleCloseDelModal();
       })
       .catch((error) => {
-        alert("刪除產品失敗");
+        dispatch(
+          pushMessage({
+            text: "刪除產品失敗",
+            status: "failed",
+          })
+        );
       });
   };
 
